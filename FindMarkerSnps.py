@@ -5,9 +5,9 @@ import pysam
 # Parse the ">>,,...ACGT"-like mpileup sequence  
 def ParsePileupSequence(seq):
   nucCnt = {"A":0, "C":0, "G":0, "T":0, ".":0} # "." is for ref match
-  s = seq.upper()
-  for c in s:
-    if (c not in "ACGT.,"):
+  for c in seq:
+    c = c.upper()
+    if (c not in "ACGT.," or c == ""):
       continue
     if (c == '.' or c == ','):
       nucCnt['.'] += 1
@@ -52,7 +52,7 @@ for b in bams:
 
 # Process each intervals
 for g in geneIntervals:
-  for interval in geneIntervals:
+  for interval in geneIntervals[g]:
     cellSupportResult = [] 
     intervalLen = interval[2] - interval[1]
     for i in range(intervalLen):
@@ -64,13 +64,15 @@ for g in geneIntervals:
         if (bl != label):
           continue
         for pileupread in pysams[b].pileup(interval[0], interval[1], interval[2] - 1, min_mapping_quality=1):
+          if (pileupread.reference_pos < interval[1] or pileupread.reference_pos >= interval[2]):
+            continue
           mpileupseq = pileupread.get_query_sequences()
           nucResult = ParsePileupSequence(mpileupseq) 
           totalResultCount = sum(nucResult)
           if (totalResultCount < minCov):
             continue
           for j in range(5):
-            if (cellSupportResult >= totalResultCount * mismatchFrac):
+            if (nucResult[j] >= totalResultCount * mismatchFrac):
               cellSupportResult[pileupread.reference_pos - interval[1]][label][j] += 1
     
     # Go through each position to output the group 1 specific SNPs
@@ -84,6 +86,6 @@ for g in geneIntervals:
         for t, cnt in enumerate(support[j]):
           if (cnt > totalCell * groupCellFrac[j]): 
             nucType[j] = t 
-      if (nucType[0] != nucType[1]):
+      if (nucType[0] != -1 and nucType[1] != -1 and nucType[0] != nucType[1]):
         print("%s %s %d %d %d"%(gene, interval[0], interval[1] + i, nucType[0], nucType[1]))
       
