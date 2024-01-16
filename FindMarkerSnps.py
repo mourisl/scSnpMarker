@@ -18,12 +18,15 @@ def ParsePileupSequence(seq):
 parser = argparse.ArgumentParser(description="Find SNPs that are unique to group 1's BAM files/barcode")
 parser.add_argument("-l", help="list of BAM files with group ID", dest="list", required=True)
 parser.add_argument("-g", help="list of genes and intervals in bed format (chr start end gene_id)", dest="gene", required=True)
+parser.add_argument("--min-cov", help="the minimum number of reads covering a base for a valid cell", dest="minCov", default=3)
+parser.add_argument("--min-cell", help="the minimum number of cells that has valid base calling results in a group", dest="minCellSupport", default=3)
+parser.add_argument("--debug", help="output the count information at each position", action="store_true")
 
 args = parser.parse_args()
 
 mismatchFrac = 0.99
-minCov = 5
-minCellSupport = 5
+minCov = args.minCov
+minCellSupport = args.minCellSupport
 groupCellFrac = [1, 0.6]
 
 # 
@@ -69,6 +72,10 @@ for g in geneIntervals:
           mpileupseq = pileupread.get_query_sequences()
           nucResult = ParsePileupSequence(mpileupseq) 
           totalResultCount = sum(nucResult)
+
+          #if (args.debug is not None):
+          #  print(b, bl, pileupread.reference_pos, nucResult)
+
           if (totalResultCount < minCov):
             continue
           for j in range(5):
@@ -78,14 +85,16 @@ for g in geneIntervals:
     # Go through each position to output the group 1 specific SNPs
     for i in range(intervalLen):
       support = cellSupportResult[i]
+      if (args.debug):
+        print(gene, interval[0], interval[1] + i, support)
       if (sum(support[0]) < minCellSupport or sum(support[1]) < minCellSupport):
         continue
       nucType = [-1, -1]
       for j in [0, 1]:
         totalCell = sum(support[j])
         for t, cnt in enumerate(support[j]):
-          if (cnt > totalCell * groupCellFrac[j]): 
-            nucType[j] = t 
+          if (cnt > totalCell * groupCellFrac[j] - 1e-6): 
+            nucType[j] = t
       if (nucType[0] != -1 and nucType[1] != -1 and nucType[0] != nucType[1]):
-        print("%s %s %d %d %d"%(gene, interval[0], interval[1] + i, nucType[0], nucType[1]))
+        print("%s %s %d %d %d %d %d"%(gene, interval[0], interval[1] + i, nucType[0], nucType[1], support[0][nucType[0]], support[1][nucType[1]]))
       
