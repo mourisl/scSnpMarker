@@ -1,19 +1,7 @@
 #import sys
 import argparse
 import pysam
-
-# Parse the ">>,,...ACGT"-like mpileup sequence  
-def ParsePileupSequence(seq):
-  nucCnt = {"A":0, "C":0, "G":0, "T":0, ".":0} # "." is for ref match
-  for c in seq:
-    c = c.upper()
-    if (c not in "ACGT.," or c == ""):
-      continue
-    if (c == '.' or c == ','):
-      nucCnt['.'] += 1
-    else:
-      nucCnt[c] += 1
-  return [nucCnt[c] for c in "ACGT."]
+import utils
 
 parser = argparse.ArgumentParser(description="Find SNPs that are unique to group 1's BAM files/barcode")
 parser.add_argument("-l", help="list of BAM files with group ID", dest="list", required=True)
@@ -54,8 +42,8 @@ for b in bams:
   pysams[b] = pysam.AlignmentFile(b, "rb") 
 
 # Process each intervals
-for g in geneIntervals:
-  for interval in geneIntervals[g]:
+for gene in geneIntervals:
+  for interval in geneIntervals[gene]:
     cellSupportResult = [] 
     intervalLen = interval[2] - interval[1]
     for i in range(intervalLen):
@@ -66,11 +54,11 @@ for g in geneIntervals:
       for b,bl in bams.items():
         if (bl != label):
           continue
-        for pileupread in pysams[b].pileup(interval[0], interval[1], interval[2] - 1, min_mapping_quality=1):
+        for pileupread in pysams[b].pileup(interval[0], interval[1], interval[2], min_mapping_quality=1):
           if (pileupread.reference_pos < interval[1] or pileupread.reference_pos >= interval[2]):
             continue
           mpileupseq = pileupread.get_query_sequences()
-          nucResult = ParsePileupSequence(mpileupseq) 
+          nucResult = utils.ParsePileupSequence(mpileupseq) 
           totalResultCount = sum(nucResult)
 
           #if (args.debug is not None):
