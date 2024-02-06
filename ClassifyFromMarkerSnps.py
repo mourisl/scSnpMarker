@@ -39,13 +39,15 @@ for b in bams:
   sam = pysam.AlignmentFile(b, "rb") 
   groupCount = [0, 0, 0, 0] # support group 0. suport group 1. neither support. no enough read
   for snp in snpList:
+    zerocov = 1 # zero coverage, will will be skipped by pileup 
     for pileupread in sam.pileup(snp[1], snp[2], snp[2] + 1, min_mapping_quality=1):
       if (pileupread.reference_pos != snp[2]):
         continue
       mpileupseq = pileupread.get_query_sequences()
       nucResult = utils.ParsePileupSequence(mpileupseq) 
       totalResultCount = sum(nucResult)
-      
+      zerocov = 0
+
       if (totalResultCount < minCov):
         groupCount[3] += 1
         continue
@@ -57,6 +59,7 @@ for b in bams:
         groupCount[0] += 1
       else:
         groupCount[2] += 1
+    groupCount[3] += zerocov 
   groupCall = -1
   
   if (groupCount[1] > 0):
