@@ -8,6 +8,7 @@ parser.add_argument("-l", help="list of BAM files with group ID", dest="list", r
 parser.add_argument("-g", help="list of genes and intervals in bed format (chr start end gene_id)", dest="gene", required=True)
 parser.add_argument("--min-cov", help="the minimum number of reads covering a base for a valid cell", dest="minCov", default=3)
 parser.add_argument("--min-cell", help="the minimum number of cells that has valid base calling results in a group", dest="minCellSupport", default=3)
+parser.add_argument("--min-mapq", help="the minimum MAPQ of an alignment", dest="minMapQ", default=30)
 parser.add_argument("--debug", help="output the count information at each position", action="store_true")
 
 args = parser.parse_args()
@@ -15,6 +16,7 @@ args = parser.parse_args()
 mismatchFrac = 0.99
 minCov = args.minCov
 minCellSupport = args.minCellSupport
+minMapQ = args.minMapQ
 groupCellFrac = [1, 0.6]
 
 # 
@@ -54,15 +56,15 @@ for gene in geneIntervals:
       for b,bl in bams.items():
         if (bl != label):
           continue
-        for pileupread in pysams[b].pileup(interval[0], interval[1], interval[2], min_mapping_quality=1):
+        for pileupread in pysams[b].pileup(interval[0], interval[1], interval[2], min_mapping_quality=minMapQ):
           if (pileupread.reference_pos < interval[1] or pileupread.reference_pos >= interval[2]):
             continue
           mpileupseq = pileupread.get_query_sequences()
           nucResult = utils.ParsePileupSequence(mpileupseq) 
           totalResultCount = sum(nucResult)
 
-          #if (args.debug is not None):
-          #  print(b, bl, pileupread.reference_pos, nucResult)
+          if (args.debug):
+            print(b, bl, interval[0], pileupread.reference_pos, nucResult, mpileupseq)
 
           if (totalResultCount < minCov):
             continue

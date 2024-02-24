@@ -9,9 +9,11 @@ parser.add_argument("-l", help="list of BAM files with group ID", dest="list", r
 parser.add_argument("-s", help="list of marker SNPs", dest="snpList", required=True)
 parser.add_argument("--min-cov", help="the minimum number of reads covering a base for a valid cell", dest="minCov", default=3)
 parser.add_argument("-f", help="fraction of read support that needs to be categorize to group 1", dest="frac", default=0.99)
+parser.add_argument("--min-mapq", help="the minimum MAPQ of an alignment", dest="minMapQ", default=30)
 
 args = parser.parse_args() 
 minCov = args.minCov
+minMapQ = args.minMapQ
 frac = args.frac 
 
 # collect the samples
@@ -40,7 +42,7 @@ for b in bams:
   groupCount = [0, 0, 0, 0] # support group 0. suport group 1. neither support. no enough read
   for snp in snpList:
     zerocov = 1 # zero coverage, will will be skipped by pileup 
-    for pileupread in sam.pileup(snp[1], snp[2], snp[2] + 1, min_mapping_quality=1):
+    for pileupread in sam.pileup(snp[1], snp[2], snp[2] + 1, min_mapping_quality=minMapQ):
       if (pileupread.reference_pos != snp[2]):
         continue
       mpileupseq = pileupread.get_query_sequences()
