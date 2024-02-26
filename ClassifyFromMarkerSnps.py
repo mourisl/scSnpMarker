@@ -36,8 +36,8 @@ fp.close()
 
 # Go through each file and assign the cateogry
 for b in bams:
-  if (bams[b] != -1):
-    continue
+  #if (bams[b] != -1):
+  #  continue
   sam = pysam.AlignmentFile(b, "rb") 
   groupCount = [0, 0, 0, 0] # support group 0. suport group 1. neither support. no enough read
   for snp in snpList:
@@ -70,4 +70,4 @@ for b in bams:
     groupCall = 0
   
   countStr = "\t".join([str(x) for x in groupCount])
-  print("%s\t%d\t%s"%(b, groupCall, countStr))
+  print("%s\t%d\t%d\t%s"%(b, bams[b], groupCall, countStr))

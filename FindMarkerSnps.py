@@ -2,6 +2,7 @@
 import argparse
 import pysam
 import utils
+import sys
 
 parser = argparse.ArgumentParser(description="Find SNPs that are unique to group 1's BAM files/barcode")
 parser.add_argument("-l", help="list of BAM files with group ID", dest="list", required=True)
@@ -59,12 +60,18 @@ for gene in geneIntervals:
         for pileupread in pysams[b].pileup(interval[0], interval[1], interval[2], min_mapping_quality=minMapQ):
           if (pileupread.reference_pos < interval[1] or pileupread.reference_pos >= interval[2]):
             continue
-          mpileupseq = pileupread.get_query_sequences()
+          mpileupseq = []
+          try:
+            mpileupseq = pileupread.get_query_sequences()
+          except:
+            print(b, bl, interval[0], pileupread.reference_pos, nucResult, mpileupseq)
+            continue
+
           nucResult = utils.ParsePileupSequence(mpileupseq) 
           totalResultCount = sum(nucResult)
 
           if (args.debug):
-            print(b, bl, interval[0], pileupread.reference_pos, nucResult, mpileupseq)
+            print(b, bl, interval[0], pileupread.reference_pos, file=sys.stderr)
 
           if (totalResultCount < minCov):
             continue
