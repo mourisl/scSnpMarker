@@ -16,6 +16,14 @@ minCov = args.minCov
 minMapQ = args.minMapQ
 frac = args.frac 
 
+def IsBlacklistGenes(g):
+  prefixes = ["IGHV", "IGHJ", "IGKV", "IGKJ", "IGLV", "IGLJ", 
+      "TRBV", "TRBJ", "TRAV", "TRAJ", "TRGV", "TRGJ", "TRDV", "TRDJ"]#, "HLA"]
+  for p in prefixes:
+    if (g.startswith(p)):
+      return True
+  return False
+
 # collect the samples
 bams = {} # key: bam file name, value: group
 fp = open(args.list)
@@ -40,8 +48,14 @@ for b in bams:
   #  continue
   sam = pysam.AlignmentFile(b, "rb") 
   groupCount = [0, 0, 0, 0] # support group 0. suport group 1. neither support. no enough read
+
+  group0snps = []
+  group1snps = []
   for snp in snpList:
     zerocov = 1 # zero coverage, will will be skipped by pileup 
+    if (IsBlacklistGenes(snp[0])):
+      continue
+
     for pileupread in sam.pileup(snp[1], snp[2], snp[2] + 1, min_mapping_quality=minMapQ):
       if (pileupread.reference_pos != snp[2]):
         continue
@@ -56,18 +70,26 @@ for b in bams:
       
       if (nucResult[ snp[4] ] >= frac * totalResultCount - 1e-6
           or nucResult[snp[4] ] > 0.5 * totalResultCount):
+        group1snps.append("_".join([str(s) for s in snp[0:4]]) + "_" + "/".join([str(nucResult[ snp[4] ]), str(totalResultCount)]))
         groupCount[1] += 1
       elif (nucResult[snp[3]] > 0.5 * totalResultCount):
+        group0snps.append("_".join([str(s) for s in snp[0:4]]) + "_" + "/".join([str(nucResult[ snp[3] ]), str(totalResultCount)]))
         groupCount[0] += 1
       else:
         groupCount[2] += 1
     groupCount[3] += zerocov 
   groupCall = -1
   
-  if (groupCount[1] > 0):
-    groupCall = 1
-  elif (groupCount[0] > 0):
-    groupCall = 0
+  #if (groupCount[1] > 0):
+  #  groupCall = 1
+  #elif (groupCount[0] > 0):
+  #  groupCall = 0
+  if (groupCount[1] + groupCount[0] >= 4):
+    if (groupCount[1] > groupCount[0]):
+      groupCall = 1
+    elif (groupCount[0] > groupCount[1]):
+      groupCall = 0;
   
   countStr = "\t".join([str(x) for x in groupCount])
-  print("%s\t%d\t%d\t%s"%(b, bams[b], groupCall, countStr))
+  print("%s\t%d\t%d\t%s\t%s\t%s\t"%(b, bams[b], groupCall, countStr, 
+    ";".join(group0snps), ";".join(group1snps)))
